@@ -23,93 +23,103 @@ export async function getConsoleById(id: string) {
 }
 
 export async function createConsole(prevState: any, formData: FormData) {
-    const validatedFields = ConsoleSchema.safeParse(Object.fromEntries(formData.entries()));
+    try {
+        const validatedFields = ConsoleSchema.safeParse(Object.fromEntries(formData.entries()));
 
-    if (!validatedFields.success) {
-        return { error: "Revisa los campos", fields: validatedFields.error.flatten().fieldErrors };
-    }
-
-    const existingConsole = await prisma.console.findUnique({
-        where: { name: validatedFields.data.name }
-    });
-
-    if (existingConsole) {
-        return { error: "Esta consola ya existe en el sistema." };
-    }
-
-    let image = "no-image.png";
-    const file = formData.get("image") as File;
-
-    if (file && file.size > 0) {
-        const nameWithoutExt = path.parse(file.name).name;
-        const fileName = `${Date.now()}-${nameWithoutExt}.jpg`;
-        const buffer = Buffer.from(await file.arrayBuffer());
-
-        const processedBuffer = await sharp(buffer)
-            .resize(800, 600, { fit: 'cover' })
-            .jpeg({ quality: 80 })
-            .toBuffer();
-
-        image = await persistImage(processedBuffer, fileName, "image/jpeg");
-    }
-
-    await prisma.console.create({
-        data: {
-            ...validatedFields.data,
-            releasedate: new Date(validatedFields.data.releasedate),
-            image
+        if (!validatedFields.success) {
+            return { error: "Revisa los campos", fields: validatedFields.error.flatten().fieldErrors };
         }
-    });
 
-    revalidatePath("/consoles");
-    return { success: true };
+        const existingConsole = await prisma.console.findUnique({
+            where: { name: validatedFields.data.name }
+        });
+
+        if (existingConsole) {
+            return { error: "Esta consola ya existe en el sistema." };
+        }
+
+        let image = "no-image.png";
+        const file = formData.get("image") as File;
+
+        if (file && file.size > 0) {
+            const nameWithoutExt = path.parse(file.name).name;
+            const fileName = `${Date.now()}-${nameWithoutExt}.jpg`;
+            const buffer = Buffer.from(await file.arrayBuffer());
+
+            const processedBuffer = await sharp(buffer)
+                .resize(800, 600, { fit: 'cover' })
+                .jpeg({ quality: 80 })
+                .toBuffer();
+
+            image = await persistImage(processedBuffer, fileName, "image/jpeg");
+        }
+
+        await prisma.console.create({
+            data: {
+                ...validatedFields.data,
+                releasedate: new Date(validatedFields.data.releasedate),
+                image
+            }
+        });
+
+        revalidatePath("/consoles");
+        return { success: true };
+    } catch (error) {
+        console.error("[createConsole] failed", error);
+        return { error: "No se pudo registrar la consola. Revisa los logs de Vercel." };
+    }
 }
 
 export async function updateConsole(prevState: any, formData: FormData) {
-    const id = parseInt(formData.get("id") as string);
-    const validatedFields = ConsoleSchema.safeParse(Object.fromEntries(formData.entries()));
+    try {
+        const id = parseInt(formData.get("id") as string);
+        const validatedFields = ConsoleSchema.safeParse(Object.fromEntries(formData.entries()));
 
-    if (!validatedFields.success) return { error: "Error de validacion" };
+        if (!validatedFields.success) return { error: "Error de validacion" };
 
-    const consoleData = await prisma.console.findUnique({ where: { id } });
-    let image = consoleData?.image || "no-image.png";
+        const consoleData = await prisma.console.findUnique({ where: { id } });
+        let image = consoleData?.image || "no-image.png";
 
-    const file = formData.get("image") as File;
+        const file = formData.get("image") as File;
 
-    if (file && file.size > 0) {
-        const nameWithoutExt = path.parse(file.name).name;
-        const fileName = `${Date.now()}-${nameWithoutExt}.jpg`;
-        const buffer = Buffer.from(await file.arrayBuffer());
+        if (file && file.size > 0) {
+            const nameWithoutExt = path.parse(file.name).name;
+            const fileName = `${Date.now()}-${nameWithoutExt}.jpg`;
+            const buffer = Buffer.from(await file.arrayBuffer());
 
-        const processedBuffer = await sharp(buffer)
-            .resize(800, 600, { fit: 'cover' })
-            .jpeg({ quality: 80 })
-            .toBuffer();
+            const processedBuffer = await sharp(buffer)
+                .resize(800, 600, { fit: 'cover' })
+                .jpeg({ quality: 80 })
+                .toBuffer();
 
-        const storedImage = await persistImage(processedBuffer, fileName, "image/jpeg");
+            const storedImage = await persistImage(processedBuffer, fileName, "image/jpeg");
 
-        if (consoleData?.image && consoleData.image !== "no-image.png") {
-            try {
-                await removeStoredImage(consoleData.image, "no-image.png");
-            } catch (err) {
-                console.error(err);
+            if (consoleData?.image && consoleData.image !== "no-image.png") {
+                try {
+                    await removeStoredImage(consoleData.image, "no-image.png");
+                } catch (err) {
+                    console.error(err);
+                }
             }
+
+            image = storedImage;
         }
 
-        image = storedImage;
+        await prisma.console.update({
+            where: { id },
+            data: {
+                ...validatedFields.data,
+                releasedate: new Date(validatedFields.data.releasedate),
+                image
+            }
+        });
+
+        revalidatePath("/consoles");
+        return { success: true };
+    } catch (error) {
+        console.error("[updateConsole] failed", error);
+        return { error: "No se pudo actualizar la consola. Revisa los logs de Vercel." };
     }
-
-    await prisma.console.update({
-        where: { id },
-        data: {
-            ...validatedFields.data,
-            releasedate: new Date(validatedFields.data.releasedate),
-            image
-        }
-    });
-
-    revalidatePath("/consoles");
-    return { success: true };
 }
 
 export async function deleteConsole(id: number) {

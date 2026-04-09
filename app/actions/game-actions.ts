@@ -32,93 +32,103 @@ export async function getGameById(id: string) {
 }
 
 export async function createGame(prevState: any, formData: FormData) {
-    const validatedFields = GameSchema.safeParse(Object.fromEntries(formData.entries()));
+    try {
+        const validatedFields = GameSchema.safeParse(Object.fromEntries(formData.entries()));
 
-    if (!validatedFields.success) {
-        return { error: "Revisa los campos", fields: validatedFields.error.flatten().fieldErrors };
-    }
-
-    const existingGame = await prisma.game.findFirst({
-        where: { title: { equals: validatedFields.data.title, mode: 'insensitive' } }
-    });
-
-    if (existingGame) {
-        return { error: "Este juego ya se encuentra registrado en el sistema." };
-    }
-
-    let cover = "no-cover.png";
-    const file = formData.get("cover") as File;
-
-    if (file && file.size > 0) {
-        const nameWithoutExt = path.parse(file.name).name;
-        const fileName = `${Date.now()}-${nameWithoutExt}.jpg`;
-        const buffer = Buffer.from(await file.arrayBuffer());
-
-        const processedBuffer = await sharp(buffer)
-            .resize(600, 800, { fit: 'cover' })
-            .jpeg({ quality: 80 })
-            .toBuffer();
-
-        cover = await persistImage(processedBuffer, fileName, "image/jpeg");
-    }
-
-    await prisma.game.create({
-        data: {
-            ...validatedFields.data,
-            releasedate: new Date(validatedFields.data.releasedate),
-            cover
+        if (!validatedFields.success) {
+            return { error: "Revisa los campos", fields: validatedFields.error.flatten().fieldErrors };
         }
-    });
 
-    revalidatePath("/games");
-    return { success: true };
+        const existingGame = await prisma.game.findFirst({
+            where: { title: { equals: validatedFields.data.title, mode: 'insensitive' } }
+        });
+
+        if (existingGame) {
+            return { error: "Este juego ya se encuentra registrado en el sistema." };
+        }
+
+        let cover = "no-cover.png";
+        const file = formData.get("cover") as File;
+
+        if (file && file.size > 0) {
+            const nameWithoutExt = path.parse(file.name).name;
+            const fileName = `${Date.now()}-${nameWithoutExt}.jpg`;
+            const buffer = Buffer.from(await file.arrayBuffer());
+
+            const processedBuffer = await sharp(buffer)
+                .resize(600, 800, { fit: 'cover' })
+                .jpeg({ quality: 80 })
+                .toBuffer();
+
+            cover = await persistImage(processedBuffer, fileName, "image/jpeg");
+        }
+
+        await prisma.game.create({
+            data: {
+                ...validatedFields.data,
+                releasedate: new Date(validatedFields.data.releasedate),
+                cover
+            }
+        });
+
+        revalidatePath("/games");
+        return { success: true };
+    } catch (error) {
+        console.error("[createGame] failed", error);
+        return { error: "No se pudo registrar el juego. Revisa los logs de Vercel." };
+    }
 }
 
 export async function updateGame(prevState: any, formData: FormData) {
-    const id = parseInt(formData.get("id") as string);
-    const validatedFields = GameSchema.safeParse(Object.fromEntries(formData.entries()));
+    try {
+        const id = parseInt(formData.get("id") as string);
+        const validatedFields = GameSchema.safeParse(Object.fromEntries(formData.entries()));
 
-    if (!validatedFields.success) return { error: "Error de validacion" };
+        if (!validatedFields.success) return { error: "Error de validacion" };
 
-    const game = await prisma.game.findUnique({ where: { id } });
-    let cover = game?.cover || "no-cover.png";
+        const game = await prisma.game.findUnique({ where: { id } });
+        let cover = game?.cover || "no-cover.png";
 
-    const file = formData.get("cover") as File;
+        const file = formData.get("cover") as File;
 
-    if (file && file.size > 0) {
-        const nameWithoutExt = path.parse(file.name).name;
-        const fileName = `${Date.now()}-${nameWithoutExt}.jpg`;
-        const buffer = Buffer.from(await file.arrayBuffer());
+        if (file && file.size > 0) {
+            const nameWithoutExt = path.parse(file.name).name;
+            const fileName = `${Date.now()}-${nameWithoutExt}.jpg`;
+            const buffer = Buffer.from(await file.arrayBuffer());
 
-        const processedBuffer = await sharp(buffer)
-            .resize(600, 800, { fit: 'cover' })
-            .jpeg({ quality: 80 })
-            .toBuffer();
+            const processedBuffer = await sharp(buffer)
+                .resize(600, 800, { fit: 'cover' })
+                .jpeg({ quality: 80 })
+                .toBuffer();
 
-        const storedImage = await persistImage(processedBuffer, fileName, "image/jpeg");
+            const storedImage = await persistImage(processedBuffer, fileName, "image/jpeg");
 
-        if (game?.cover && game.cover !== "no-cover.png") {
-            try {
-                await removeStoredImage(game.cover, "no-cover.png");
-            } catch (err) {
-                console.error("No se pudo borrar el archivo viejo:", err);
+            if (game?.cover && game.cover !== "no-cover.png") {
+                try {
+                    await removeStoredImage(game.cover, "no-cover.png");
+                } catch (err) {
+                    console.error("No se pudo borrar el archivo viejo:", err);
+                }
             }
+
+            cover = storedImage;
         }
 
-        cover = storedImage;
+        await prisma.game.update({
+            where: { id },
+            data: {
+                ...validatedFields.data,
+                releasedate: new Date(validatedFields.data.releasedate),
+                cover
+            }
+        });
+
+        revalidatePath("/games");
+        return { success: true };
+    } catch (error) {
+        console.error("[updateGame] failed", error);
+        return { error: "No se pudo actualizar el juego. Revisa los logs de Vercel." };
     }
-
-    await prisma.game.update({
-        where: { id },
-        data: {
-            ...validatedFields.data,
-            releasedate: new Date(validatedFields.data.releasedate),
-            cover
-        }
-    });
-
-    revalidatePath("/games");
-    return { success: true };
 }
 
 export async function deleteGame(id: number) {
