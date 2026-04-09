@@ -1,0 +1,53 @@
+{
+  "name": "16-nextjs",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "postinstall": "prisma generate",
+    "lint": "eslint"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@neondatabase/serverless": "^0.10.0",
+    "@nivo/core": "^0.99.0",
+    "@nivo/line": "^0.99.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "@prisma/adapter-neon": "6.0.1",
+    "@prisma/client": "6.0.1",
+    "@stackframe/stack": "^2.8.77",
+    "@vercel/blob": "^1.1.1",
+    "lucide-react": "^0.577.0",
+    "next": "16.1.7",
+    "react": "19.2.3",
+    "react-countup": "^6.5.3",
+    "react-dom": "19.2.3",
+    "react-hook-form": "^7.72.0",
+    "recharts": "^3.8.1",
+    "sharp": "^0.34.5",
+    "sonner": "^2.0.7",
+    "use-debounce": "^10.1.0",
+    "ws": "^8.20.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/ws": "^8.18.1",
+    "daisyui": "^5.5.19",
+    "dotenv": "^17.3.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.7",
+    "prisma": "6.0.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}
